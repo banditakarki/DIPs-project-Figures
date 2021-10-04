@@ -1,0 +1,200 @@
+echo "# Figures" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/banditakarki/Figures.git
+git push -u origin main
+
+##################### The Code ###########################
+
+library(deSolve)
+library(tidyverse)
+library("pracma")
+
+theme_set(theme_bw())
+
+################## Model 1 (Free dips) ######################
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1      
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D) 
+
+state <- c(V = 0.7, D = 0.1, B = 0.1, E=0.1)
+
+
+times <- seq(0,50,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B
+    dE <- (-dB -dV -dD)
+    
+    return(list(c(dV , dD, dB, dE)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+out$exp_V = (1-delta_V/beta_V)
+head(out)
+
+out <- pivot_longer(out, 2:6)
+head(out)
+out$name <- factor(out$name, levels = c("B","D","E","V","exp_V"))
+
+p1 <- ggplot(out, aes(x = time, y = value, color = name, linetype = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B", "D", "E","V",expression(V[wo])), name = "something", values = c( "blue","green","black", "red", "purple")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("Model 1", "(A)"~paste(beta[D],"= 3  ")) + theme(legend.position="right")
+p1 <- p1 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(axis.title.x=element_blank(),
+                                                                                                 axis.text.x=element_blank(),
+                                                                                                 axis.ticks.x=element_blank()) 
+p1 <- p1 + scale_linetype_manual(values = c(rep("solid", 4), rep("dashed", 1)),name = "something",labels = c( "B","D", "E","V",expression(V[wo])))
+p1
+
+
+############## Model 2 (special case of model 1) ##################
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+     
+
+state       <- c(V = 0.7, B = 0.1, E = 0.2)
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V) 
+
+
+times <- seq(0,50,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+      
+      dV <- beta_V * V * E - beta_D *B * V - delta_V * V
+      dB <- beta_D * B * V - delta_B * B
+      dE <- (-dB -dV)
+      
+      return(list(c(dV,dB,dE)))
+  
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+out$exp_V = (1-delta_V/beta_V)
+head(out)
+
+p2 <- ggplot(pivot_longer(out, 2:5), aes(x = time, y = value, color = name, linetype = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B", "E",expression(V[wo]),"V"), name = "something", values = c( "blue","black","purple", "red")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("Model 2","(B)"~paste(beta[D],"=3")) + theme(legend.position="right")
+p2 <- p2 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(axis.title=element_blank(),
+                                                                                               axis.text=element_blank(),
+                                                                                              axis.ticks=element_blank())
+p2 <- p2 + scale_linetype_manual(values = c(rep("solid", 2), rep("dashed", 1),rep("solid", 1)),name = "something",labels = c( "B", "E",expression(V[wo]),"V"))
+p2
+
+################## Model 1 (Free dips) ######################
+
+beta_V = 2
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+delta_D = 1      
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D) 
+
+state <- c(V = 0.7, D = 0.1, B = 0.1, E=0.1)
+
+
+times <- seq(0,50,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B
+    dE <- (-dB -dV -dD)
+    
+    return(list(c(dV , dD, dB, dE)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+out$exp_V = (1-delta_V/beta_V)
+head(out)
+
+
+out <- pivot_longer(out, 2:6)
+head(out)
+out$name <- factor(out$name, levels = c("B","D","E","V","exp_V"))
+
+p3 <- ggplot(out, aes(x = time, y = value, color = name, linetype = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B", "D", "E","V",expression(V[wo])), name = "something", values = c( "blue","green","black", "red", "purple")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("(C)"~paste(beta[D],"=5")) + theme(legend.position="right")
+p3 <- p3 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) 
+p3 <- p3 + scale_linetype_manual(values = c(rep("solid", 4), rep("dashed", 1)),name = "something",labels = c( "B","D", "E","V",expression(V[wo])))
+p3
+
+
+############## Model 2 (special case of model 1) ##################
+
+beta_V = 2
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+
+
+state       <- c(V = 0.7, B = 0.1, E = 0.2)
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V) 
+
+
+times <- seq(0,50,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    
+    dV <- beta_V * V * E - beta_D *B * V - delta_V * V
+    dB <- beta_D * B * V - delta_B * B
+    dE <- (-dB -dV)
+    
+    return(list(c(dV,dB,dE)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+out$exp_V = (1-delta_V/beta_V)
+head(out)
+
+p4 <- ggplot(pivot_longer(out, 2:5), aes(x = time, y = value, color = name, linetype = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B", "E",expression(V[wo]),"V"), name = "something", values = c( "blue","black","purple", "red")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("(D)"~paste(beta[D],"=5")) + theme(legend.position="right")
+p4 <- p4 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(axis.title.y=element_blank(),
+                                                                                                 axis.text.y=element_blank(),
+                                                                                                 axis.ticks.y=element_blank())
+p4 <- p4 + scale_linetype_manual(values = c(rep("solid", 2), rep("dashed", 1),rep("solid", 1)),name = "something",labels = c( "B", "E",expression(V[wo]),"V"))
+p4
+
+# combine all the figures
+library(gridExtra)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+
