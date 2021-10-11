@@ -1,0 +1,227 @@
+library(deSolve)
+library(tidyverse)
+library("pracma")
+
+theme_set(theme_bw())
+
+################# To find AUC and maxV without DIPs but with immunity ##################
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+
+times <- seq(0,30,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+
+no_DIPs_AUC <- trapz(times,out$V)
+no_DIPs_maxV <- max(out$V)
+
+################ To find AUC and maxV with both DIPs and immunity #######
+######### DIPs introduced at time = 0 ##############
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+
+
+times <- seq(0,30,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+
+out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+
+AUC_t0 <- trapz(times,out$V)
+maxV_t0 <- max(out$V)
+
+############## DIPs introduced later (not at time = 0 ) #############
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5  
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+times <- seq(0,30,by=0.1)
+
+results <- as.data.frame(ode(y = state, times = times, func = model, 
+                             parms = parameters))
+head(results)
+
+AUC <- NULL
+maxV <- NULL
+
+time_intro <- seq(0.5,12.5,by=0.5)
+
+for(i in time_intro) {
+  
+  y <- which(results$time == i)
+  
+  df1 <- results[1:(y-1),]
+  
+  
+  M <- 30
+  
+  state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+  times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+  
+  df2 <- as.data.frame(ode(y = state, times = times, func = model, 
+                           parms = parameters))
+  df <- rbind(df1, df2)
+  
+  head(df)
+  
+  AUC <- cbind(AUC, trapz(df$time,df$V))
+  maxV <- cbind(maxV,max(df$V))
+}
+
+######## AUC ################
+time_begin <- 0
+time_intro <- c(time_begin, time_intro)
+AUC <- c(AUC_t0, AUC)
+final_AUC <- t(rbind(time_intro, AUC))
+colnames(final_AUC)[2] <- "AUC"
+final_AUC <- as.data.frame(final_AUC)
+head(final_AUC)
+                                                                                            
+p1 <- ggplot(final_AUC, aes(x = time_intro, y = AUC)) + geom_point(aes(color = "red")) + 
+  scale_color_manual(name = "",values = c("red"),labels= c("DIPs and Immunity")) +
+  labs(x = "Time of DIP introduction", y = "AUC") + ylim(2,5) + ggtitle("Area Under the Curve") + theme(legend.position= "left")
+p1 <- p1 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(legend.text=element_text(size=10))
+p1 <- p1 + geom_segment(aes(x = 0, xend = 12.5, y = no_DIPs_AUC, yend = no_DIPs_AUC, linetype = 'No DIPs (With Immunity)'), color = "red")
+p1
+
+######## maxV ##################
+
+maxV <- c(maxV_t0, maxV)
+final_maxV <- t(rbind(time_intro, maxV))
+colnames(final_maxV)[2] <- "maxV"
+final_maxV <- as.data.frame(final_maxV)
+head(final_maxV)
+
+p2 <- ggplot(final_maxV , aes(x = time_intro, y = maxV)) + geom_point(aes(color = "red")) + 
+  scale_color_manual(name = "",values = c("red"),labels= c("DIPs and Immunity")) +
+  labs(x = "Time of DIP introduction", y = "maxV") + ylim(0.2,0.5) + ggtitle("Maximum Viral Load") + theme(legend.position= "left")
+p2 <- p2 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(legend.text=element_text(size=10))
+p2 <- p2 + geom_segment(aes(x = 0, xend = 12.5, y = no_DIPs_maxV, yend = no_DIPs_maxV, linetype = 'No DIPs (With Immunity)'), color = "red")
+p2
+
+library(gridExtra)
+
+grid.arrange(p1,p1,ncol=2)
+
+
