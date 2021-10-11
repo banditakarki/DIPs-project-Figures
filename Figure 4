@@ -1,0 +1,289 @@
+library(deSolve)
+library(tidyverse)
+library("pracma")
+
+theme_set(theme_bw())
+
+######################### no DIPs, no immunity ##################################
+
+beta_V = 2.99
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.0, A = 0.0)
+
+
+times <- seq(0,30,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+   
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+   
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+head(out)
+
+max(out$V)
+
+p1 <- ggplot(pivot_longer(out, c(V,E)), aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "E","V"),name = "something", values = c("black", "red")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("(A) No DIPs or Immunity") + theme(legend.position="left")
+p1 <- p1 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15))
+p1 <- p1 + annotate("text", x=25, y=0.8, label= "maxV = 0.66")
+p1
+
+
+
+
+######################### DIPs, no immunity #############################
+beta_V = 2.99
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.0, A = 0.0)
+
+
+times <- seq(0,30,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+head(out)
+
+max(out$V)
+
+out <- pivot_longer(out, c(2:5,8))
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","exp_V"))
+
+p2 <- ggplot(out, aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B","D", "E","V",expression(V[wo])),name = "something", values = c( "blue", "green","black", "red", "red")) +
+  labs(x = "time", y = "Cell frequencies") + ylim(0,1) + ggtitle("With DIPs but without immunity") + theme(legend.position="left")
+p2 <- p2 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) 
+p2 <- p2 + annotate("text", x=25, y=0.8, label= "maxV = 0.41")
+p2 <- p2 + scale_linetype_manual(values = c(rep("solid", 4), rep("dashed", 1)),name = "something",labels = c( "B","D", "E","V",expression(V[wo])))
+p2
+
+
+######################### no DIPs, with immunity ##################################
+
+beta_V = 2.99
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+
+times <- seq(0,30,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+head(out)
+
+trapz(times,out$V)
+max(out$V)
+
+out <- pivot_longer(out, c(2,5:7))
+head(out)
+out$name <- factor(out$name, levels = c("E","V","I","A"))
+
+p3 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("E","V","I","A"),name = "something", values = c("black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Cell frequencies/Immune densities") + ylim(0,1) + ggtitle("(C) With immunity but without DIPs") + theme(legend.position="left")
+p3 <- p3 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15))
+p3 <- p3 + annotate("text", x=25, y=0.87, label= "AUC = 5.73") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.62")
+p3
+
+
+
+######################### both DIPs and immunity #############################
+beta_V = 2.99
+beta_D = 5  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+
+
+times <- seq(0,30,by=0.1)
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    #if (c_v * c_d > c_v * delta + c_d * delta_v && delta < c_d) {
+    
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    #}
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+head(out)
+
+trapz(times,out$V)
+max(out$V)
+
+out <- pivot_longer(out, 2:7)
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+p4 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Cell frequencies and Immune densities") + ylim(0,1) + ggtitle("With both DIPs and immunity") + theme(legend.position="left")
+p4 <- p4 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(axis.title.y=element_blank(),
+                                                                                                 axis.text.y=element_blank(),
+                                                                                                 axis.ticks.y=element_blank()) #+ geom_area(fill = "red")
+p4 <- p4 + annotate("text", x=25, y=0.87, label= "AUC = 2.33") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.41")
+p4 <- p4 + scale_linetype_manual(values = c(rep("solid", 6), rep("dashed", 1)),name = "something",labels = c( "B","D", "E","V","I","A",expression(V[wo])))
+p4
+
+
+library(gridExtra)
+
+grid.arrange(p1,p2,p3,p4,ncol=2)
+
+
