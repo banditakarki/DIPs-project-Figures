@@ -1,0 +1,157 @@
+library(deSolve)
+library(tidyverse)
+library(rootSolve)
+library(RColorBrewer)
+library(parallel)
+library(pbmcapply)
+library(metR)
+library(farver)
+library(rlang)
+library(ggplot2)
+library("pracma")
+
+theme_set(theme_bw())
+
+###################### AUC #######################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+step_size_grid <- 0.05
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  AUC = trapz(times,results$V)
+  
+  my_list <- as.data.frame(cbind(results,AUC))
+  return(my_list)
+  
+}
+
+resultz <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new <- as.data.frame(do.call(rbind, resultz))
+
+resultz_new_new <- pivot_longer(resultz_new, 2:7)
+
+p1 <- ggplot(resultz_new_new, aes(x = delta_D, y = beta_D, fill = AUC)) + geom_raster() + 
+  geom_contour(inherit.aes = F, aes(x = delta_D, y = beta_D, z = AUC), color = "grey", alpha = 0.5) + 
+  scale_fill_gradientn(colors = rev(topo.colors(12)), limits = c(2,5)) + geom_text_contour(aes(z = AUC))
+p1 <- p1 + labs(x = expression(delta[D]),y = expression(beta[D]))
+p1 <- p1 + theme(text = element_text(size = 15)) + ggtitle("(A) Area Under the Curve")
+plot(p1)
+
+
+########################### maxV ###########################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+   
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+
+step_size_grid <- 0.05
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  maxV <- max(results$V)
+  my_list <- as.data.frame(cbind(results,maxV))
+  
+  return(my_list)
+}
+
+resultz <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new <- as.data.frame(do.call(rbind, resultz))
+resultz_new_new <- pivot_longer(resultz_new, 2:7)
+
+p2 <- ggplot(resultz_new_new, aes(x = delta_D, y = beta_D, fill = maxV)) + geom_raster() + 
+  geom_contour(inherit.aes = F, aes(x = delta_D, y = beta_D, z = maxV), color = "grey", alpha = 0.5) + 
+  scale_fill_gradientn(colors = rev(topo.colors(12)), limits = c(0.2,0.5))
+p2 <- p2 + labs(x = expression(delta[D]),y = expression(beta[D])) 
+p2 <- p2 + theme(text = element_text(size = 15)) + ggtitle("(B) Maximum V") + geom_text_contour(aes(z = maxV))
+plot(p2)
+
+library(gridExtra)
+grid.arrange(p1,p2,ncol=2)
+
