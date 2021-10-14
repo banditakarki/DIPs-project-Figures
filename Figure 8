@@ -1,0 +1,576 @@
+library(deSolve)
+library(tidyverse)
+library(rootSolve)
+library(RColorBrewer)
+library(parallel)
+library(pbmcapply)
+library(metR)
+library(farver)
+library(rlang)
+library(ggplot2)
+library("pracma")
+
+###################### Area Under the Curve ##############################
+
+############### NO DIPS  ######################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  AUC = trapz(times,results$V)
+  my_list <- as.data.frame(cbind(results,AUC))
+  return(my_list)
+}
+
+resultz1 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new1 <- as.data.frame(do.call(rbind, resultz1))
+
+data_final1 <- resultz_new1[ , c("delta_D", "beta_D", "AUC")]  
+colnames(data_final1)[3] <- "no_DIPs"
+data_no_DIPS <- unique( data_final1[ , 1:3 ] )
+
+
+#################### DIPS AT BEGINNING ########################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  AUC = trapz(times,results$V)
+  my_list <- as.data.frame(cbind(results,AUC))
+  return(my_list)
+}
+
+resultz2 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new2 <- as.data.frame(do.call(rbind, resultz2))
+
+# selects only the three columns below
+data_final2 <- resultz_new2[ , c("delta_D", "beta_D", "AUC")]  
+
+#rename column
+colnames(data_final2)[3] <- "DIPs_start"
+
+#filter the repetitive rows since AUC is same at all time points
+data_DIPS_START <- unique( data_final2[ , 1:3 ] )
+
+# only select AUC
+data_DIPS_START <- data_DIPS_START[ , c("DIPs_start")] 
+
+
+############## DIPS ADDED LATE  ########################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  
+  x <- results$V > 0.3
+  
+  if (any(x == TRUE)) {  
+    
+    y <- min(which(x == TRUE))
+    
+    df1 <- results[1:(y-1),]
+    
+    M <- 20
+    
+    state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+    times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+    
+    df2 <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                   parms = c(delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i])),
+                               delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+    
+    df <- rbind(df1, df2)
+    
+    new_time <- c(df1$time, times)
+    AUC = trapz(new_time,df$V)
+    
+    my_list <- as.data.frame(cbind(df,AUC))
+    return(my_list)
+    
+  } else{
+    df <- results
+    AUC = trapz(times,df$V)
+    my_list <- as.data.frame(cbind(df,AUC))
+    return(my_list)
+  }
+  
+  
+}
+
+resultz3 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new3 <- as.data.frame(do.call(rbind, resultz3))
+
+# selects only the three columns below
+data_final3 <- resultz_new3[ , c("delta_D", "beta_D", "AUC")]  
+
+#rename column
+colnames(data_final3)[3] <- "DIPs_late"
+
+#filter the repetitive rows since AUC is same at all time points
+data_DIPS_LATE <- unique( data_final3[ , 1:3 ] )
+
+# only select AUC
+data_DIPS_LATE <- data_DIPS_LATE[ , c("DIPs_late")] 
+
+AUC_final_data <- cbind(data_no_DIPS,data_DIPS_START,data_DIPS_LATE)
+View(AUC_final_data)
+
+################# plotting ########################
+
+data_1 <- subset(AUC_final_data, beta_D == 1)
+data_2 <- subset(AUC_final_data, beta_D == 3)
+data_3 <- subset(AUC_final_data, beta_D == 5)
+
+mydata <- data_2
+head(mydata)
+
+# Time of DIP introduction
+df1$time[y-1]+step_size_times
+
+colnames(mydata)[4] <- "DIPs (t = 0)"
+colnames(mydata)[5] <- "DIPs (t = 4.6)" 
+
+d <- mydata %>% pivot_longer(c(no_DIPs,"DIPs (t = 0)","DIPs (t = 4.6)"), 
+                             names_to = "condition", values_to = "probability")
+head(d)
+
+d$condition <- factor(d$condition , levels = c("no_DIPs","DIPs (t = 0)","DIPs (t = 4.6)"))
+
+p1 <- ggplot(d, aes(x = delta_D, y = probability, color = condition))
+p1 <- p1 + geom_line(size = 1.2) + theme_minimal() + theme(legend.position = c(0.65, 0.25))
+p1 <- p1 + labs(x = expression(delta[D]), y = "AUC", color = "Condition", cex.axis = 3)
+p1 <- p1 + ggtitle("(B)"~paste(beta[D],"=3")) + ylim(1,5) #+ theme(legend.position = "none") 
+p1 <- p1 + theme(text = element_text(size = 15)) 
+plot(p1)
+
+############################# Maximum V (maxV) ################################
+
+############### NO DIPS  ######################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  maxV <- max(results$V)
+  my_list <- as.data.frame(cbind(results,maxV))
+  
+  ## does not matter what time I specify it still gives me the max V in that particular run of varying parameters. In this case, delta_v and c_d
+  return(my_list)
+}
+
+
+resultz1 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new1 <- as.data.frame(do.call(rbind, resultz1))
+head(resultz_new1)
+
+data_final1 <- resultz_new1[ , c("delta_D", "beta_D", "maxV")]  
+colnames(data_final1)[3] <- "no_DIPs"
+data_no_DIPS <- unique(data_final1[ , 1:3])
+head(data_no_DIPS)
+
+#################### DIPS AT BEGINNING ########################
+
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  maxV <- max(results$V)
+  my_list <- as.data.frame(cbind(results,maxV))
+  
+  ## does not matter what time I specify it still gives me the max V in that particular run of varying parameters. In this case, delta_v and c_d
+  return(my_list)
+}
+
+
+resultz2 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new2 <- as.data.frame(do.call(rbind, resultz2))
+
+# selects only the three columns below
+data_final2 <- resultz_new2[ , c("delta_D", "beta_D", "maxV")]  
+
+#rename column
+colnames(data_final2)[3] <- "DIPs_start"
+
+#filter the repetitive rows since AUC is same at all time points
+data_DIPS_START <- unique( data_final2[ , 1:3 ] )
+
+# only select maxV
+data_DIPS_START <- data_DIPS_START[ , c("DIPs_start")] 
+head(data_DIPS_START)
+
+
+############## DIPS ADDED LATE  #######################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+delta_B = 1
+delta_V = 1 
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+times <- seq(0,20,by=0.1)
+
+
+parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
+                              delta_D = seq(from = 0.75, to = 5, by = step_size_grid), 
+                              beta_D = seq(from = 1, to = 5, by = step_size_grid))
+
+model_func <- function(i){
+  results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                     parms = parameter_grid[i,]),
+                                 delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+  
+  
+  x <- results$V > 0.3
+  
+  if (any(x == TRUE)) {  
+    
+    y <- min(which(x == TRUE))
+    
+    df1 <- results[1:(y-1),]
+    
+    M <- 20
+    
+    state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+    times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+    
+    df2 <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
+                                   parms = c(delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i])),
+                               delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
+    
+    df <- rbind(df1, df2)
+    maxV <- max(df$V)
+    
+    my_list <- as.data.frame(cbind(df,maxV))
+    return(my_list)
+    
+  } else{
+    df <- results
+    maxV = max(df$V)
+    my_list <- as.data.frame(cbind(df,maxV))
+    return(my_list)
+  }
+  
+  
+}
+
+
+resultz3 <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
+
+resultz_new3 <- as.data.frame(do.call(rbind, resultz3))
+
+# selects only the three columns below
+data_final3 <- resultz_new3[ , c("delta_D", "beta_D", "maxV")]  
+
+#rename column
+colnames(data_final3)[3] <- "DIPs_late"
+
+#filter the repetitive rows since maxV is same at all time points
+data_DIPS_LATE <- unique( data_final3[ , 1:3 ] )
+
+# only select maxV
+data_DIPS_LATE <- data_DIPS_LATE[ , c("DIPs_late")] 
+
+maxV_final_data <- cbind(data_no_DIPS,data_DIPS_START,data_DIPS_LATE)
+View(maxV_final_data)
+
+############ plot ###############
+
+data_1 <- subset(maxV_final_data, beta_D == 1)
+data_2 <- subset(maxV_final_data, beta_D == 3)
+data_3 <- subset(maxV_final_data, beta_D == 5)
+
+mydata <- data_2
+head(mydata)
+
+# Time of DIP introduction
+df1$time[y-1]+step_size_times
+
+colnames(mydata)[4] <- "DIPs (t = 0)"
+colnames(mydata)[5] <- "DIPs (t = 4.6)" 
+
+d <- mydata %>% pivot_longer(c(no_DIPs,"DIPs (t = 0)","DIPs (t = 4.6)"), 
+                             names_to = "condition", values_to = "probability")
+head(d)
+
+d$condition <- factor(d$condition , levels = c("no_DIPs","DIPs (t = 0)","DIPs (t = 4.6)"))
+
+p2 <- ggplot(d, aes(x = delta_D, y = probability, color = condition))
+p2 <- p2 + geom_line(size = 1.2) + theme_minimal() + theme(legend.position = c(0.65, 0.25))
+p2 <- p2 + labs(x = expression(delta[D]), y = "maxV", color = "Condition", cex.axis = 3)
+p2 <- p2 + ggtitle("(B)"~paste(beta[D],"=3")) + ylim(0.25,0.45) #+ theme(legend.position = "none") 
+p2 <- p2 + theme(text = element_text(size = 15)) 
+plot(p2)
+
+
+library(gridExtra)
+grid.arrange(p1,p2,ncol=2)
+
