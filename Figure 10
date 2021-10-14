@@ -1,0 +1,474 @@
+library(deSolve)
+library(tidyverse)
+library("pracma")
+
+theme_set(theme_bw())
+
+########################## DIPs at the beginning #########################
+###################### responds to and kills DIPs ###########################
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,35,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+
+trapz(times,out$V)
+max(out$V)
+
+out <- pivot_longer(out, 2:7)
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+p1 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = expression(atop("DIPs (t = 0)", "Cell frequencies"))) + ylim(0,1) + ggtitle("(A) Responds to/ kills") + theme(plot.title = element_text(size = 15))
+p1 <- p1 + theme(legend.title = element_blank()) + theme(legend.position = "none") + theme(text = element_text(size = 15))
+p1 <- p1 + annotate("text", x=25, y=0.87, label= "AUC = 3.83") +
+            annotate("text", x=25, y=0.8, label= "maxV = 0.4")
+p1
+
+##################### responds to but does not kill DIPs #####################
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 0
+k_AV = 1
+k_AB = 1
+k_AD = 0
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,35,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+
+trapz(times,out$V)
+max(out$V)
+
+out <- pivot_longer(out, 2:7)
+head(out)
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+p2 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c( "B","D", "E","V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Response") + ylim(0,1) + ggtitle("(B) Responds to/ does not kill") + theme(plot.title = element_text(size = 15))
+p2 <- p2 + theme(legend.title = element_blank()) + theme(legend.position = c(0.75, 0.4)) + theme(text = element_text(size = 13))
+p2 <- p2 + theme(axis.title.y=element_blank(),
+                axis.text.y=element_blank(),
+                axis.ticks.y=element_blank())
+p2 <- p2 + annotate("text", x=25, y=0.87, label= "AUC = 3.62") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.4")
+p2
+
+
+########### does not respond to or kill DIPs ################
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 0
+k_AV = 1
+k_AB = 1
+k_AD = 0
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+times <- seq(0,35,by=0.1)
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+out <- ode(y = state, times = times, func = model, parms = parameters)
+out <- as.data.frame(out)
+
+trapz(times,out$V)
+max(out$V)
+
+out <- pivot_longer(out, 2:7)
+head(out)
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+p3 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E","V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Response") + ylim(0,1) + ggtitle("(C) Does not respond or kill ") + theme(plot.title = element_text(size = 15))
+p3 <- p3 + theme(legend.title = element_blank()) + theme(legend.position = "none") + theme(text = element_text(size = 15))
+p3 <- p3 + theme(axis.title.y=element_blank(),
+                axis.text.y=element_blank(),
+                axis.ticks.y=element_blank())
+p3 <- p3 + annotate("text", x=25, y=0.87, label= "AUC = 3.99") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.4")
+p3
+
+
+
+########################## DIPs late #########################
+###################### responds to and kills DIPs ###########################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 1
+k_AV = 1
+k_AB = 1
+k_AD = 1
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+times <- seq(0,35,by=0.1)
+
+
+  results <- as.data.frame(ode(y = state, times = times, func = model, 
+                                     parms = parameters))
+  head(results)
+  
+  results[47,]
+  x <- results$V > 0.3
+  
+  any(x == TRUE)
+    
+    y <- min(which(x == TRUE))
+    
+    df1 <- results[1:(y-1),]
+    
+    M <- 35
+    
+    state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1,I = results[y,]$I,A = results[y,]$A)
+    times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+    
+    df2 <- as.data.frame(ode(y = state, times = times, func = model, 
+                                   parms = parameters))
+    df <- rbind(df1, df2)
+
+head(df)
+
+out <- pivot_longer(df, 2:7)
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+p4 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E","V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = expression(atop("DIPs (t = 4.6)", "Cell frequencies"))) + ylim(0,1) + ggtitle("(D)") + theme(plot.title = element_text(size = 15))
+p4 <- p4 + theme(legend.title = element_blank()) + theme(legend.position = "none") + theme(text = element_text(size = 15))
+p4 <- p4 + annotate("text", x=25, y=0.87, label= "AUC = 3.38") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.33")
+p4
+
+trapz(df$time,df$V)
+max(df$V)
+
+
+##################### responds to but does not kill DIPs #####################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 0
+k_AV = 1
+k_AB = 1
+k_AD = 0
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0.1
+d_I = 0.5  
+s_A = 5 
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+times <- seq(0,35,by=0.1)
+
+results <- as.data.frame(ode(y = state, times = times, func = model, 
+                             parms = parameters))
+head(results)
+
+x <- results$V > 0.3
+
+any(x == TRUE)
+  
+  y <- min(which(x == TRUE))
+  
+  df1 <- results[1:(y-1),]
+  
+  M <- 35
+  
+  state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1,I = results[y,]$I,A = results[y,]$A)
+  times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+  
+  df2 <- as.data.frame(ode(y = state, times = times, func = model, 
+                           parms = parameters))
+  df <- rbind(df1, df2)
+
+head(df)
+
+out <- pivot_longer(df, 2:7)
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+
+p5 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E","V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Response") + ylim(0,1) + ggtitle("(E)") + theme(plot.title = element_text(size = 15))
+p5 <- p5 + theme(legend.title = element_blank()) + theme(legend.position = "none") + theme(text = element_text(size = 15))
+p5 <- p5 + theme(axis.title.y=element_blank(),
+                 axis.text.y=element_blank(),
+                 axis.ticks.y=element_blank())
+p5 <- p5 + annotate("text", x=25, y=0.87, label= "AUC = 3.17") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.33")
+p5
+
+trapz(df$time,df$V)
+max(df$V)
+
+
+########### does not respond to or kill DIPs ################
+
+model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    
+    dV <- beta_V * V * E - beta_D * B * V - delta_V * V - k_IV * I * V - k_AV * A * V
+    dB <- beta_D * B * V + beta_V * V * D - delta_B * B - k_IB * I * B - k_AB * A * B
+    dD <- beta_D * B * E - beta_V * V * D - delta_D * D - k_ID * I * D - k_AD * A * D
+    dE <- (-dB -dV -dD)
+    dI <- (1-I) * (s_IV * V + s_IB * B + s_ID * D) - d_I * I
+    dA <- s_A * A * I
+    
+    return(list(c(dV , dD, dB, dE, dI, dA)))
+    
+  })
+}
+
+beta_V = 2
+beta_D = 3  
+delta_B = 1
+delta_V = 1 
+delta_D = 1
+
+k_IV = 1  
+k_IB = 1
+k_ID = 0
+k_AV = 1
+k_AB = 1
+k_AD = 0
+s_IV = 0.1
+s_IB = 0.1
+s_ID = 0
+d_I = 0.5  
+s_A = 5
+
+
+parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
+                k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
+
+
+state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
+
+step_size_grid <- 0.05
+step_size_times <- 0.1
+times <- seq(0,35,by=0.1)
+
+results <- as.data.frame(ode(y = state, times = times, func = model, 
+                             parms = parameters))
+head(results)
+
+x <- results$V > 0.3
+
+any(x == TRUE)
+  
+  y <- min(which(x == TRUE))
+  
+  df1 <- results[1:(y-1),]
+  
+  
+  M <- 35
+  
+  state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1,I = results[y,]$I,A = results[y,]$A)
+  times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
+  
+  df2 <- as.data.frame(ode(y = state, times = times, func = model, 
+                           parms = parameters))
+  df <- rbind(df1, df2)
+
+head(df)
+
+out <- pivot_longer(df, 2:7)
+head(out)
+
+out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+
+p6 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
+  scale_color_manual(labels = c("B","D","E","V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
+  labs(x = "time", y = "Response") + ylim(0,1) + ggtitle("(F)") + theme(plot.title = element_text(size = 15))
+p6 <- p6 + theme(legend.title = element_blank()) + theme(legend.position = "none") + theme(text = element_text(size = 15))
+p6 <- p6 + theme(axis.title.y=element_blank(),
+                axis.text.y=element_blank(),
+                axis.ticks.y=element_blank())
+p6 <- p6 + annotate("text", x=25, y=0.87, label= "AUC = 3.79") +
+  annotate("text", x=25, y=0.8, label= "maxV = 0.33")
+p6
+
+trapz(df$time,df$V)
+max(df$V)
+
+
+
+library(gridExtra)
+grid.arrange(p1,p2,p3,p4,p5,p6,ncol=3)
