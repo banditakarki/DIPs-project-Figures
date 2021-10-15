@@ -1,7 +1,15 @@
+#loading the packages
 library(ggplot2)
 library(tidyr)
 library(deSolve)
+library(gridExtra)
 
+#set the theme of the background
+theme_set(theme_bw())
+
+################ delta_D = infinity #############
+
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
    
@@ -15,21 +23,36 @@ model <- function(t, state, parameters) {
   })
 }
 
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
 delta_V = 1
 delta_D = 100
 
-step_size <- 0.1
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D)
+
+#initial conditions
 state <- c(V = 0.1, D = 0.0, B = 0.1, E=0.8)
+
+#time to run the simulation along with the step size
+step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+#run the ode model the parameter values and initial conditions specified
+out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
+out <- as.data.frame(out)
+
+#calculate the expected value of V without DIPs or Immunity
 out$exp_V = (1-delta_V/beta_V)
+
+#print the head of the output variable
 head(out)
+
+#plot the data frame using ggplot
 
 p1 <- ggplot(pivot_longer(out, c(2,4,5,6)), aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) +
   scale_color_manual(labels = c( "B", "E",expression(V[wo]),"V"),name = "something", values = c( "blue","black", "purple","red")) + theme(axis.title.x=element_blank(),
@@ -41,9 +64,9 @@ p1 <- p1 + scale_linetype_manual(values = c(rep("solid", 2), rep("dashed", 1),re
 p1
 
 
-#######################
+####################### delta_D = 2 #################
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -57,22 +80,36 @@ model <- function(t, state, parameters) {
   })
 }
 
-
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
 delta_V = 1
 delta_D = 2
 
-step_size <- 0.1
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D)
+
+#initial conditions
 state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
+
+#time to run the simulation along with the step size
+step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+#run the ode model the parameter values and initial conditions specified
+out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
+out <- as.data.frame(out)
+
+#calculate the expected value of V without DIPs or Immunity
 out$exp_V = (1-delta_V/beta_V)
+
+#print the head of the output variable
 head(out)
+
+#plot the data frame using ggplot
 
 p2 <- ggplot(pivot_longer(out, 2:6), aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) +
   scale_color_manual(labels = c( "B","D", "E",expression(V[wo]),"V"),name = "something", values = c( "blue", "green","black", "purple", "red")) +
@@ -84,8 +121,9 @@ p2 <- p2 + scale_linetype_manual(values = c(rep("solid", 3), rep("dashed", 1),re
 p2
 
 
-##########################
+########################## delta_D = 1 ####################
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -99,22 +137,36 @@ model <- function(t, state, parameters) {
   })
 }
 
-
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
 delta_V = 1
 delta_D = 1
 
-step_size <- 0.1
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D)
+
+#initial conditions
 state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
+
+#time to run the simulation along with the step size
+step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+#run the ode model the parameter values and initial conditions specified
+out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
+out <- as.data.frame(out)
+
+#calculate the expected value of V without DIPs or Immunity
 out$exp_V = (1-delta_V/beta_V)
+
+#print the head of the output variable
 head(out)
+
+#plot the data frame using ggplot
 
 p3 <- ggplot(pivot_longer(out, 2:6), aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) +
   scale_color_manual(labels = c( "B","D", "E",expression(V[wo]),"V"),name = "something", values = c( "blue", "green","black", "purple", "red")) +
@@ -124,8 +176,9 @@ p3 <- p3 + scale_linetype_manual(values = c(rep("solid", 3), rep("dashed", 1),re
 p3
 
 
-############################
+############################ delta_D = 0.5 ##############
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -139,23 +192,35 @@ model <- function(t, state, parameters) {
   })
 }
 
-
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
 delta_V = 1
 delta_D = 0.5
 
-step_size <- 0.1
-
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D)
+
+#initial conditions
 state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
+
+#time to run the simulation along with the step size
+step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+#run the ode model the parameter values and initial conditions specified
+out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
+out <- as.data.frame(out)
+
+#calculate the expected value of V without DIPs or Immunity
 out$exp_V = (1-delta_V/beta_V)
+
+#print the head of the output variable
 head(out)
 
+#plot the data frame using ggplot
 
 p4 <- ggplot(pivot_longer(out, 2:6), aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) +
   scale_color_manual(labels = c( "B","D", "E",expression(V[wo]),"V"),name = "something", values = c( "blue", "green","black", "purple", "red")) +
@@ -168,10 +233,7 @@ p4
 
 
 
-##################
-
-library(gridExtra)
-
+# combine all the figures in a single page
 grid.arrange(p1,p2,p3,p4,ncol=2)
 
 
