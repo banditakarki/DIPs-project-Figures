@@ -53,7 +53,7 @@ times <- seq(0,20,by=0.1)
 
 
 parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
-                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                               s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
                               delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
                               beta_D = seq(from = 1, to = 5, by = step_size_grid))
@@ -123,7 +123,7 @@ state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
 times <- seq(0,20,by=0.1)
 
 parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
-                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
+                              k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                               s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
                               delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
                               beta_D = seq(from = 1, to = 5, by = step_size_grid))
