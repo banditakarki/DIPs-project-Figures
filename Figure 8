@@ -302,7 +302,7 @@ data_3 <- subset(AUC_final_data, beta_D == 5)
 #if you would like to plot a data with a different beta_D value, assign accordingly.
 mydata <- data_2
 
-#print the head of the output variable
+#print the head of the mydata variable
 head(mydata)
 
 # Time of DIP introduction
@@ -627,6 +627,8 @@ data_3 <- subset(maxV_final_data, beta_D == 5)
 #select which data we want to plot (right now beta_D = 3 since we selected data_2 to plot)
 #if you would like to plot a data with a different beta_D value, assign accordingly.
 mydata <- data_2
+
+#print head of the mydata variable
 head(mydata)
 
 # Time of DIP introduction
