@@ -40,7 +40,7 @@ state <- c(V = 0.1, D = 0.0, B = 0.1, E=0.8)
 step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-#run the ode model the parameter values and initial conditions specified
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
 
 #convert the output to a data frame
@@ -97,7 +97,7 @@ state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
 step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-#run the ode model the parameter values and initial conditions specified
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
 
 #convert the output to a data frame
@@ -154,7 +154,7 @@ state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
 step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-#run the ode model the parameter values and initial conditions specified
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
 
 #convert the output to a data frame
@@ -208,7 +208,7 @@ state <- c(V = 0.1, D = 0.1, B = 0.1, E=0.7)
 step_size <- 0.1
 times <- seq(0,30,by=step_size)
 
-#run the ode model the parameter values and initial conditions specified
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
 
 #convert the output to a data frame
