@@ -1,13 +1,18 @@
+#loading the packages
 library(deSolve)
 library(tidyverse)
 library("pracma")
+library(gridExtra)
 
+
+#set the theme of the background
 theme_set(theme_bw())
 
 
 
 ################################### DIPs introduced at t = 0 #############
 
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
@@ -26,21 +31,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
-
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
-
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
    
@@ -56,15 +58,25 @@ model <- function(t, state, parameters) {
   })
 }
 
-
+#run the ode model with the parameter values and initial conditions specified
 out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
 
+#calculate AUC of the viral curve
 trapz(times,out$V)
+
+#calculate maxV of the viral curve
 max(out$V)
 
+#selecting the non-zero variables and turning the columns into rows
 out <- pivot_longer(out, 2:7)
+
+#print the head of the output variable
 head(out)
+
+#changing the order of the variables so they appear in the order specified below in the figure legend
 out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+#plot the data frame using ggplot
 
 p1 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
   scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
@@ -78,6 +90,7 @@ p1
 
 ############## DIPs introduced at t = 5 ##############
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -93,7 +106,7 @@ model <- function(t, state, parameters) {
   })
 }
 
-
+#parameter values
 beta_V = 2
 beta_D = 3
 delta_B = 1
@@ -112,48 +125,67 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
-
 step_size_grid <- 0.05
 step_size_times <- 0.1
 
-
+#run the ode model with the parameter values and initial conditions specified
 results <- as.data.frame(ode(y = state, times = times, func = model, 
                              parms = parameters))
+
+#print the head of the results variable
 head(results)
 
-  
+  #find the row at which we reach time 5
   y <- which(results$time == 5)
   
+  #save the data up until a row before we reach time 5
   df1 <- results[1:(y-1),]
   
-  
+  #time to run the simulation along with the step size
   M <- 30
   
+  #using the values of variables where DIP is introduced as initial condition
   state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+  
+  #using the time where DIP is introduced as starting time
   times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
   
+  #run the ode model with the parameter values and initial conditions specified
   df2 <- as.data.frame(ode(y = state, times = times, func = model, 
                            parms = parameters))
+  
+  #combining the dataframes before and after DIP introduction into one data frame
   df <- rbind(df1, df2)
   
+  #print the head of the df variable
   head(df)
   
+  #calculate the AUC of the viral curve
   trapz(df$time,df$V)
+  
+  #calculate the peak of the viral curve
   max(df$V)
   
+  #selecting the non-zero variables and turning the columns into rows
   out <- pivot_longer(df, 2:7)
+  
+  #print the head of the output variable
   head(out)
+  
+  #changing the order of the variables so they appear in the order specified below in the figure legend
   out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+  
+  #plot the data frame using ggplot
   
   p2 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
     scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
@@ -169,6 +201,7 @@ head(results)
   
   ############## DIPs introduced at t = 7.5 ############
   
+  #the ODE model
   model <- function(t, state, parameters) {
     with(as.list(c(state, parameters)), {
       
@@ -184,7 +217,7 @@ head(results)
     })
   }
   
-  
+  #parameter values
   beta_V = 2
   beta_D = 3
   delta_B = 1
@@ -203,48 +236,68 @@ head(results)
   d_I = 0.5  
   s_A = 5
   
+  #defining the parameters
   parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                   k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                   s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
   
   
-  
+  #initial conditions
   state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
   
-  
+  #time to run the simulation along with the step size
   times <- seq(0,30,by=0.1)
-  
   step_size_grid <- 0.05
   step_size_times <- 0.1
   
-  
+  #run the ode model with the parameter values and initial conditions specified
   results <- as.data.frame(ode(y = state, times = times, func = model, 
                                parms = parameters))
+                               
+  #print the head of the results variable                           
   head(results)
   
-  
+  #find the row at which we reach time 7.5
   y <- which(results$time == 7.5)
   
+  #save the data up until a row before we reach time 7.5
   df1 <- results[1:(y-1),]
   
-  
+  #time to run the simulation along with the step size
   M <- 30
   
+  #using the values of variables where DIP is introduced as initial condition
   state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+  
+  #using the time where DIP is introduced as starting time
   times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
   
+  #run the ode model with the parameter values and initial conditions specified
   df2 <- as.data.frame(ode(y = state, times = times, func = model, 
                            parms = parameters))
+  
+  #combining the dataframes before and after DIP introduction into one data frame
   df <- rbind(df1, df2)
   
+  #print the head of the df variable
   head(df)
   
+  #calculate the AUC of the viral curve
   trapz(df$time,df$V)
+  
+  #calculate the peak of the viral curve
   max(df$V)
   
+  #selecting the non-zero variables and turning the columns into rows
   out <- pivot_longer(df, 2:7)
+  
+  #print the head of the output variable
   head(out)
+  
+  #changing the order of the variables so they appear in the order specified below in the figure legend
   out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+  
+  #plot the data frame using ggplot
   
   p3 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
     scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
@@ -256,6 +309,7 @@ head(results)
   
   ########### DIPs introduced at t = 12 ##############
   
+  #the ODE model
   model <- function(t, state, parameters) {
     with(as.list(c(state, parameters)), {
       
@@ -271,7 +325,7 @@ head(results)
     })
   }
   
-  
+  #parameter values
   beta_V = 2
   beta_D = 3
   delta_B = 1
@@ -290,47 +344,68 @@ head(results)
   d_I = 0.5  
   s_A = 5
   
+  #defining the parameters
   parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                   k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                   s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
   
   
-  
+  #initial conditions
   state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
   
-  
-  times <- seq(0,30,by=0.1)
-  
+  #time to run the simulation along with the step size
+  times <- seq(0,30,by=0.1)#time to run the simulation along with the step size
   step_size_grid <- 0.05
   step_size_times <- 0.1
   
-  
+  #run the ode model with the parameter values and initial conditions specified
   results <- as.data.frame(ode(y = state, times = times, func = model, 
                                parms = parameters))
-  head(results)
+ 
+ #print the head of the results variable
+ head(results)
   
-  
+  #find the row at which we reach time 12
   y <- which(results$time == 12)
   
+  #save the data up until a row before we reach time 12
   df1 <- results[1:(y-1),]
   
-  
+  #time to run the simulation along with the step size
   M <- 30
   
+  #using the values of variables where DIP is introduced as initial condition
   state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+  
+  #using the time where DIP is introduced as starting time
   times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
   
+  #run the ode model with the parameter values and initial conditions specified
   df2 <- as.data.frame(ode(y = state, times = times, func = model, 
                            parms = parameters))
+  
+  #combining the dataframes before and after DIP introduction into one data frame
   df <- rbind(df1, df2)
+  
+  #print the head of the df variable
   head(df)
   
+  #calculate the AUC of the viral curve
   trapz(df$time,df$V)
+  
+  #calculate the peak of the viral curve
   max(df$V)
   
+  #selecting the non-zero variables and turning the columns into rows
   out <- pivot_longer(df, 2:7)
+  
+  #print the head of the output variable
   head(out)
+  
+  #changing the order of the variables so they appear in the order specified below in the figure legend
   out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+  
+  #plot the data frame using ggplot
   
   p4 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
     scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
@@ -344,7 +419,7 @@ head(results)
   p4
   
   
-  library(gridExtra)
+  # combine all the figures in a single page
   grid.arrange(p1,p2,p3,p4,ncol=2)
   
   
