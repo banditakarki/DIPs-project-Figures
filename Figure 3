@@ -10,7 +10,7 @@ library(farver)
 library(rlang)
 library(ggplot2)
 
-#loading the packages
+#the ode model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
    
