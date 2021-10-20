@@ -1,10 +1,15 @@
+#loading the packages
 library(deSolve)
 library(tidyverse)
 library("pracma")
+library(gridExtra)
 
+#set the theme of the background
 theme_set(theme_bw())
 
 ################# To find AUC and maxV without DIPs but with immunity ##################
+
+#parameter values
 beta_V = 2
 beta_D = 3  
 delta_B = 1
@@ -23,18 +28,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
 
-
+#time to run the simulation
 times <- seq(0,30,by=0.1)
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -50,15 +55,22 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
 out <- as.data.frame(out)
 
+#save the Area Under the Curve to a variable
 no_DIPs_AUC <- trapz(times,out$V)
+
+#save the maximum V to a variable
 no_DIPs_maxV <- max(out$V)
 
 ################ To find AUC and maxV with both DIPs and immunity #######
 ######### DIPs introduced at time = 0 ##############
 
+#parameter values
 beta_V = 2
 beta_D = 3  
 delta_B = 1
@@ -77,17 +89,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -103,14 +116,21 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
+out <- ode(y = state, times = times, func = model, parms = parameters)
 
-out <- as.data.frame(ode(y = state, times = times, func = model, parms = parameters))
+#convert the output to a data frame
+out <- as.data.frame(out)
 
+#save the Area Under the Curve to a variable
 AUC_t0 <- trapz(times,out$V)
+
+#save the maximum V to a variable
 maxV_t0 <- max(out$V)
 
 ############## DIPs introduced later (not at time = 0 ) #############
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -126,6 +146,7 @@ model <- function(t, state, parameters) {
   })
 }
 
+#parameter values
 beta_V = 2
 beta_D = 3  
 delta_B = 1
@@ -144,84 +165,133 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5  
 
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
 
+
+#time to run the simulation
+times <- seq(0,30,by=0.1)
 step_size_grid <- 0.05
 step_size_times <- 0.1
 
-times <- seq(0,30,by=0.1)
-
+#run the ode model with the parameter values and initial conditions specified
+#convert the output to a data frame
 results <- as.data.frame(ode(y = state, times = times, func = model, 
                              parms = parameters))
+                             
+#print the head of the results variable                             
 head(results)
 
+#define AUC and maxV by assigning it to NULL
 AUC <- NULL
 maxV <- NULL
 
+#time of DIP introduction with a step size of 0.5
 time_intro <- seq(0.5,12.5,by=0.5)
 
+#creating a for loop to loop through each time of DIP introduction specified above
 for(i in time_intro) {
   
+  #find the row at which we reach time i (for each time i)
   y <- which(results$time == i)
   
+  #save the data up until a row before we reach time i
   df1 <- results[1:(y-1),]
   
-  
+  #time to run the simulation along with the step size
   M <- 30
   
+  #using the values of variables where DIP is introduced as initial condition
   state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+  
+  #using the time where DIP is introduced as starting time
   times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
   
+  #run the ode model with the parameter values and initial conditions specified
   df2 <- as.data.frame(ode(y = state, times = times, func = model, 
                            parms = parameters))
+  #combining the dataframes before and after DIP introduction into one data frame
   df <- rbind(df1, df2)
   
+  #print the head of the df variable
   head(df)
   
+  #calculating the Area Under the Curve of the entire dataset
   AUC <- cbind(AUC, trapz(df$time,df$V))
+  
+  #calculating the maximum V of the entire dataset
   maxV <- cbind(maxV,max(df$V))
 }
 
 ######## AUC ################
+
+#time of simulation start
 time_begin <- 0
+
+#combining the time of DIP intro at t = 0 and later
 time_intro <- c(time_begin, time_intro)
+
+#combining the AUC of DIP intro at t = 0 and later
 AUC <- c(AUC_t0, AUC)
+
+#combining the times and AUC of DIP introduction
 final_AUC <- t(rbind(time_intro, AUC))
+
+#changing the column name to AUC
 colnames(final_AUC)[2] <- "AUC"
+
+#convert the output to a data frame
 final_AUC <- as.data.frame(final_AUC)
+
+#print the head of the final_AUC variable
 head(final_AUC)
-                                                                                            
+      
+#plot the data frame using ggplot
+
 p1 <- ggplot(final_AUC, aes(x = time_intro, y = AUC)) + geom_point(aes(color = "red")) + 
   scale_color_manual(name = "",values = c("red"),labels= c("DIPs and Immunity")) +
   labs(x = "Time of DIP introduction", y = "AUC") + ylim(2,5) + ggtitle("Area Under the Curve") + theme(legend.position= "left")
 p1 <- p1 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(legend.text=element_text(size=10))
+
+#adding a straight line that shows the AUC without DIPs but with immunity
 p1 <- p1 + geom_segment(aes(x = 0, xend = 12.5, y = no_DIPs_AUC, yend = no_DIPs_AUC, linetype = 'No DIPs (With Immunity)'), color = "red")
 p1
 
 ######## maxV ##################
 
+#combining the maxV of DIP intro at t = 0 and later
 maxV <- c(maxV_t0, maxV)
+
+#combining the times and maxV of DIP introduction
 final_maxV <- t(rbind(time_intro, maxV))
+
+#changing the column name to maxV
 colnames(final_maxV)[2] <- "maxV"
+
+#convert the output to a data frame
 final_maxV <- as.data.frame(final_maxV)
+
+#print the head of the final_maxV variable
 head(final_maxV)
+
+#plot the data frame using ggplot
 
 p2 <- ggplot(final_maxV , aes(x = time_intro, y = maxV)) + geom_point(aes(color = "red")) + 
   scale_color_manual(name = "",values = c("red"),labels= c("DIPs and Immunity")) +
   labs(x = "Time of DIP introduction", y = "maxV") + ylim(0.2,0.5) + ggtitle("Maximum Viral Load") + theme(legend.position= "left")
 p2 <- p2 + theme(legend.title = element_blank()) + theme(text = element_text(size = 15)) + theme(legend.text=element_text(size=10))
+
+#adding a straight line that shows the maxV without DIPs but with immunity
 p2 <- p2 + geom_segment(aes(x = 0, xend = 12.5, y = no_DIPs_maxV, yend = no_DIPs_maxV, linetype = 'No DIPs (With Immunity)'), color = "red")
 p2
 
-library(gridExtra)
 
+# combine all the figures in a single page
 grid.arrange(p1,p1,ncol=2)
 
 
