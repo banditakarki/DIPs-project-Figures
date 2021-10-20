@@ -1,3 +1,4 @@
+#loading the packages
 library(deSolve)
 library(tidyverse)
 library(rootSolve)
@@ -9,11 +10,11 @@ library(farver)
 library(rlang)
 library(ggplot2)
 library("pracma")
-
-theme_set(theme_bw())
+library(gridExtra)
 
 ###################### AUC #######################
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -29,6 +30,7 @@ model <- function(t, state, parameters) {
   })
 }
 
+#parameter values
 beta_V = 2
 delta_B = 1
 delta_V = 1 
@@ -45,19 +47,22 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
+#initial conditions
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
 
+#time to run the simulation along with the step size
+times <- seq(0,20,by=0.1)
 step_size_grid <- 0.05
 
-state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
-times <- seq(0,20,by=0.1)
-
-
+#defining the parameters while delta_D and beta_D loop through the specified values
 parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
                               k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                               s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
                               delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
                               beta_D = seq(from = 1, to = 5, by = step_size_grid))
 
+#creating a function so the ode model runs for each parameter combination of delta_D and beta_D
+#also calculates the Area Under the Curve for each parameter combination of delta_D and beta_D
 model_func <- function(i){
   results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
                                      parms = parameter_grid[i,]),
@@ -69,11 +74,16 @@ model_func <- function(i){
   
 }
 
+#feeding the defined parameters
 resultz <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
 
+#combining the data into a data frame
 resultz_new <- as.data.frame(do.call(rbind, resultz))
 
+#converting the variables columns into rows
 resultz_new_new <- pivot_longer(resultz_new, 2:7)
+
+#plot the data frame using ggplot
 
 p1 <- ggplot(resultz_new_new, aes(x = delta_D, y = beta_D, fill = AUC)) + geom_raster() + 
   geom_contour(inherit.aes = F, aes(x = delta_D, y = beta_D, z = AUC), color = "grey", alpha = 0.5) + 
@@ -85,6 +95,7 @@ plot(p1)
 
 ########################### maxV ###########################
 
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -100,6 +111,7 @@ model <- function(t, state, parameters) {
   })
 }
 
+#parameter values
 beta_V = 2
 delta_B = 1
 delta_V = 1 
@@ -117,18 +129,24 @@ d_I = 0.5
 s_A = 5
 
 
+
+
+#initial conditions
+state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
+
+#time to run the simulation along with the step size
+times <- seq(0,20,by=0.1)
 step_size_grid <- 0.05
 
-state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
-times <- seq(0,20,by=0.1)
-
+#defining the parameters while delta_D and beta_D loop through the specified values
 parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
                               k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                               s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I,
                               delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
                               beta_D = seq(from = 1, to = 5, by = step_size_grid))
 
-
+#creating a function so the ode model runs for each parameter combination of delta_D and beta_D
+#also calculates the Maximum V for each parameter combination of delta_D and beta_D
 model_func <- function(i){
   results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
                                      parms = parameter_grid[i,]),
@@ -140,10 +158,16 @@ model_func <- function(i){
   return(my_list)
 }
 
+#feeding the defined parameters
 resultz <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores())
 
+#combining the data into a data frame
 resultz_new <- as.data.frame(do.call(rbind, resultz))
+
+#converting the variables columns into rows
 resultz_new_new <- pivot_longer(resultz_new, 2:7)
+
+#plot the data frame using ggplot
 
 p2 <- ggplot(resultz_new_new, aes(x = delta_D, y = beta_D, fill = maxV)) + geom_raster() + 
   geom_contour(inherit.aes = F, aes(x = delta_D, y = beta_D, z = maxV), color = "grey", alpha = 0.5) + 
@@ -152,6 +176,6 @@ p2 <- p2 + labs(x = expression(delta[D]),y = expression(beta[D]))
 p2 <- p2 + theme(text = element_text(size = 15)) + ggtitle("(B) Maximum V") + geom_text_contour(aes(z = maxV))
 plot(p2)
 
-library(gridExtra)
+# combine all the figures in a single page
 grid.arrange(p1,p2,ncol=2)
 
