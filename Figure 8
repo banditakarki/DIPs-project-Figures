@@ -232,9 +232,6 @@ model_func <- function(i){
   #check which rows we get V to be greater than 0.3
   x <- results$V > 0.3
   
-  #check if we get any V greater than 0.3
-  if (any(x == TRUE)) {  
-    
     #find the row at which we first reach V greater than 0.3
     y <- min(which(x == TRUE))
     
@@ -269,14 +266,6 @@ model_func <- function(i){
     
     #return the variable my_list
     return(my_list)
-    
-  } else{ 
-    df <- results
-    AUC = trapz(times,df$V)
-    my_list <- as.data.frame(cbind(df,AUC))
-    return(my_list)
-  }
-  
   
 }
 
@@ -572,36 +561,37 @@ model_func <- function(i){
   #check which rows we get V to be greater than 0.3
   x <- results$V > 0.3
   
-  #check if we get any V greater than 0.3
-  if (any(x == TRUE)) {  
-    
     #find the row at which we first reach V greater than 0.3
     y <- min(which(x == TRUE))
     
+    #save the data up until a row before we reach V greater than 0.3
     df1 <- results[1:(y-1),]
     
+    #time to run the simulation along with the step size
     M <- 20
     
+    #using the values of variables where DIP is introduced as initial condition
     state <- c(V = results[y,]$V, D = 0.1, B = 0, E = results[y,]$E-0.1, I = results[y,]$I, A = results[y,]$A)
+    
+    #using the time where DIP is introduced as starting time
     times <- seq(df1$time[y-1]+step_size_times,M,by=step_size_times) 
     
+    #run the ode model with the parameter values and initial conditions specified
     df2 <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
                                    parms = c(delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i])),
                                delta_D = parameter_grid$delta_D[i], beta_D = parameter_grid$beta_D[i]))
     
+    #combining the dataframes before and after DIP introduction into one data frame
     df <- rbind(df1, df2)
+    
+    #calculating the maximum V of the entire dataset
     maxV <- max(df$V)
     
+    #combine the maxV into the dataframe
     my_list <- as.data.frame(cbind(df,maxV))
-    return(my_list)
     
-  } else{
-    df <- results
-    maxV = max(df$V)
-    my_list <- as.data.frame(cbind(df,maxV))
+    #return the variable my_list
     return(my_list)
-  }
-  
   
 }
 
