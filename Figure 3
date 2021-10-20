@@ -1,3 +1,4 @@
+#loading the packages
 library(deSolve)
 library(tidyverse)
 library(rootSolve)
@@ -9,38 +10,39 @@ library(farver)
 library(rlang)
 library(ggplot2)
 
-theme_set(theme_bw())
-
+#loading the packages
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
-    #if (c_v * c_d > c_v * delta + c_d * delta_v && delta < c_d) {
-    
+   
     dV <- beta_V * V * E - beta_D * B * V - delta_V * V
     dD <- beta_D * B * E - beta_V * V * D - delta_D * D
     dB <- beta_D * B * V + beta_V * V * D - delta_B * B
     dE <- (-dB -dV -dD)
     
     return(list(c(dV , dD, dB, dE)))
-    #}
     
   })
 }
 
+#parameter values
 beta_V = 2
 delta_B = 1
 delta_V = 1
 
+#initial conditions
+state <- c(V = 0.3, D = 0.3, B = 0.3, E=0.1)
+
+#time to run the simulation along with the step size
 step_size_grid <- 0.05
 step_size_times <- 0.1
-
-state <- c(V = 0.3, D = 0.3, B = 0.3, E=0.1)
 times <- seq(0,100,by=0.1)
 
-
+#defining the parameters while delta_D and beta_D loop through the specified values
 parameter_grid <- expand.grid(beta_V = beta_V, delta_B = delta_B, delta_V = delta_V,
                               delta_D = seq(from = 0.75, to = 3, by = step_size_grid), 
                               beta_D = seq(from = 1.1, to = 5, by = step_size_grid))
 
+#creating a function so the ode model runs for each parameter combination of delta_D and beta_D
 model_func <- function(i){
   results <- as.data.frame(cbind(ode(y = state, times = times, func = model, 
                                      parms = parameter_grid[i,]),
@@ -49,13 +51,19 @@ model_func <- function(i){
   return(subset(results, time == 100))
 }
 
+#feeding the defined parameters
 resultz <- pbmclapply(1:nrow(parameter_grid), FUN = model_func, mc.cores = detectCores()-1)
 
+#combining the data into a data frame
 resultz_new <- as.data.frame(do.call(rbind, resultz))
+
+#converting the variables columns into rows
 resultz_new_new <- pivot_longer(resultz_new, 2:7)
 
-colors <- colorRampPalette(c("white","blue","red"))
+#calculate the expected value of V without DIPs or Immunity
 exp_V = (1-delta_v/c_v)
+
+#plot the data frame using ggplot
 
 p1 <- ggplot(resultz_new, aes(x = delta_D, y = beta_D, fill = (exp_V - V)/exp_V)) + geom_raster() + 
   geom_contour(inherit.aes = F, aes(x = delta_D, y = beta_D, z = (exp_V - V)/exp_V), color = "grey", alpha = 0.5, breaks = c(0.1,0.3,0.5,0.7)) +
