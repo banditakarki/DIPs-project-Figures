@@ -1,11 +1,15 @@
+#loading the packages
 library(deSolve)
 library(tidyverse)
 library("pracma")
+library(gridExtra)
 
+#set the theme of the background
 theme_set(theme_bw())
 
 ######################### no DIPs, no immunity ##################################
 
+#parameter values
 beta_V = 2.99
 beta_D = 5  
 delta_B = 1
@@ -24,20 +28,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
-
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.0, A = 0.0)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
    
@@ -53,11 +55,19 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
 out <- as.data.frame(out)
+
+#print the head of the output variable
 head(out)
 
+#peak of the viral curve
 max(out$V)
+
+#plot the data frame using ggplot
 
 p1 <- ggplot(pivot_longer(out, c(V,E)), aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
   scale_color_manual(labels = c( "E","V"),name = "something", values = c("black", "red")) +
@@ -70,6 +80,8 @@ p1
 
 
 ######################### DIPs, no immunity #############################
+
+#parameter values
 beta_V = 2.99
 beta_D = 5  
 delta_B = 1
@@ -88,20 +100,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
-
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.0, A = 0.0)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -117,16 +127,28 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
 out <- as.data.frame(out)
+
+#print the head of the output variable
 head(out)
 
+#peak of the viral curve
 max(out$V)
 
+#selecting the non-zero variables and turning the columns into rows
 out <- pivot_longer(out, c(2:5,8))
+
+#print the head of the output variable
 head(out)
 
+#changing the order of the variables so they appear in the order specified below in the figure legend
 out$name <- factor(out$name, levels = c("B","D","E","V","exp_V"))
+
+#plot the data frame using ggplot
 
 p2 <- ggplot(out, aes(x = time, y = value, group = name, color = name, linetype = name)) + geom_line(size = 1) + 
   scale_color_manual(labels = c( "B","D", "E","V",expression(V[wo])),name = "something", values = c( "blue", "green","black", "red", "red")) +
@@ -139,6 +161,7 @@ p2
 
 ######################### no DIPs, with immunity ##################################
 
+#parameter values
 beta_V = 2.99
 beta_D = 5  
 delta_B = 1
@@ -157,20 +180,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
-
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.0, B = 0.0, E=0.99, I = 0.02, A = 0.02)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     
@@ -186,16 +207,31 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
 out <- as.data.frame(out)
+
+#print the head of the output variable
 head(out)
 
+#Area Under the Curve of the viral curve
 trapz(times,out$V)
+
+#Peak of the viral curve
 max(out$V)
 
+#selecting the non-zero variables and turning the columns into rows
 out <- pivot_longer(out, c(2,5:7))
+
+#print the head of the output variable
 head(out)
+
+#changing the order of the variables so they appear in the order specified below in the figure legend
 out$name <- factor(out$name, levels = c("E","V","I","A"))
+
+#plot the data frame using ggplot
 
 p3 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
   scale_color_manual(labels = c("E","V","I","A"),name = "something", values = c("black", "red", "orange", "purple")) +
@@ -208,6 +244,8 @@ p3
 
 
 ######################### both DIPs and immunity #############################
+
+#parameter values
 beta_V = 2.99
 beta_D = 5  
 delta_B = 1
@@ -226,20 +264,18 @@ s_ID = 0.1
 d_I = 0.5  
 s_A = 5
 
-
-
+#defining the parameters
 parameters <- c(beta_V = beta_V, beta_D = beta_D, delta_B = delta_B, delta_V = delta_V, delta_D = delta_D,
                 k_IV = k_IV, k_IB = k_IB, k_ID = k_ID, s_z = s_z, k_AV = k_AV, k_AB = k_AB, k_AD = k_AD,
                 s_IV = s_IV, s_IB = s_IB, s_ID = s_ID, s_A = s_A, d_I = d_I) 
 
-
-
+#initial conditions
 state <- c(V = 0.01, D = 0.1, B = 0.0, E=0.89, I = 0.02, A = 0.02)
 
-
+#time to run the simulation along with the step size
 times <- seq(0,30,by=0.1)
 
-
+#the ODE model
 model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     #if (c_v * c_d > c_v * delta + c_d * delta_v && delta < c_d) {
@@ -258,17 +294,31 @@ model <- function(t, state, parameters) {
   })
 }
 
+#run the ode model with the parameter values and initial conditions specified
 out <- ode(y = state, times = times, func = model, parms = parameters)
+
+#convert the output to a data frame
 out <- as.data.frame(out)
+
+#print the head of the output variable
 head(out)
 
+#Area Under the Curve of the viral curve
 trapz(times,out$V)
+
+#Peak of the viral curve
 max(out$V)
 
+#selecting the non-zero variables and turning the columns into rows
 out <- pivot_longer(out, 2:7)
+
+#print the head of the output variable
 head(out)
 
+#changing the order of the variables so they appear in the order specified below in the figure legend
 out$name <- factor(out$name, levels = c("B","D","E","V","I","A"))
+
+#plot the data frame using ggplot
 
 p4 <- ggplot(out, aes(x = time, y = value, group = name, color = name)) + geom_line(size = 1) + 
   scale_color_manual(labels = c("B","D","E", "V","I","A"),name = "something", values = c( "blue", "green","black", "red", "orange", "purple")) +
@@ -282,8 +332,7 @@ p4 <- p4 + scale_linetype_manual(values = c(rep("solid", 6), rep("dashed", 1)),n
 p4
 
 
-library(gridExtra)
-
+# combine all the figures in a single page
 grid.arrange(p1,p2,p3,p4,ncol=2)
 
 
